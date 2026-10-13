@@ -121,14 +121,21 @@ void loop() {
   // Handle web server only if AP mode is active
   if (apModeActive) {
     server.handleClient();
+    return;  // Don't process anything else in AP mode
   }
   
-  // Check AP button during runtime
+  // Check AP button during runtime (only in STA mode)
   static unsigned long lastButtonCheck = 0;
   if (millis() - lastButtonCheck > 1000) {
     lastButtonCheck = millis();
-    if (checkAPButton() && !apModeActive) {
-      Serial.println("\n🔘 AP Button pressed - Switching to AP mode...");
+    if (checkAPButton()) {
+      Serial.println("\n🔘 AP Button pressed - Stopping all operations and entering AP mode...");
+      
+      // Stop all current operations
+      wifiConnected = false;
+      ethernetConnected = false;
+      
+      // Enter AP mode
       startAPMode();
       apModeActive = true;
       
@@ -139,10 +146,12 @@ void loop() {
       server.on("/status", HTTP_GET, handleStatus);
       server.begin();
       Serial.println("✓ Web server started");
+      
+      return;  // Exit loop and start handling AP mode
     }
   }
   
-  // Monitor connection status
+  // Monitor connection status (only in STA mode)
   static unsigned long lastCheck = 0;
   if (millis() - lastCheck > 5000) {
     lastCheck = millis();
@@ -157,6 +166,9 @@ void loop() {
       ethernetConnected = false;
     }
   }
+  
+  // Your application code goes here (only runs in STA mode)
+  // This is where you would add Modbus, data processing, etc.
 }
 
 bool checkAPButton() {
@@ -186,6 +198,21 @@ void startAPMode() {
   Serial.println("\n📡 Starting Access Point mode...");
   Serial.println("─────────────────────────────────────────");
   
+  // Disconnect from WiFi if connected
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("⚠ Disconnecting from WiFi...");
+    WiFi.disconnect(true);
+    wifiConnected = false;
+  }
+  
+  // Disconnect Ethernet if connected
+  if (ethernetConnected) {
+    Serial.println("⚠ Disconnecting Ethernet...");
+    // Ethernet doesn't need explicit disconnect, just update flag
+    ethernetConnected = false;
+  }
+  
+  // Set to AP mode only (not AP_STA)
   WiFi.mode(WIFI_AP);
   
   // Configure static IP for AP
@@ -276,7 +303,8 @@ bool connectWiFi() {
   Serial.println("\n📶 Connecting to WiFi...");
   Serial.println("  SSID: " + currentConfig.wifi_ssid);
   
-  WiFi.mode(WIFI_AP_STA);  // Keep AP active while connecting
+  // Set to STA mode only (no AP)
+  WiFi.mode(WIFI_STA);
   
   if (currentConfig.wifi_security == "open") {
     WiFi.begin(currentConfig.wifi_ssid.c_str());
