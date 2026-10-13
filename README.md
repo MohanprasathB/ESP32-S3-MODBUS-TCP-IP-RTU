@@ -4,18 +4,21 @@ ESP32-S3 WROOM-1 N16R8 with WiFi and W5500 Ethernet module for flexible network 
 
 ## Features
 
-- **AP Mode on Boot**: Always starts in AP mode for easy configuration
+- **Push Button AP Mode**: Hold button on GPIO 47 for 3 seconds to enter configuration mode
+- **Auto-Connect on Boot**: Automatically connects using saved credentials from flash memory
 - **Flexible Connectivity**: Choose WiFi, Ethernet, or Both
 - **Priority System**: Select which connection to try first (WiFi→Ethernet or Ethernet→WiFi)
 - **Automatic Fallback**: 20-second timeout with automatic failover
 - **Web Configuration**: Beautiful responsive web interface (Sarayu Gateway)
 - **Persistent Storage**: Configuration saved to NVS flash memory
 - **Current & Previous Config Display**: View and restore previous settings
+- **Memory Efficient**: HTML stored in Flash (PROGMEM) not RAM
 
 ## Hardware Requirements
 
 - **ESP32-S3 WROOM-1 N16R8** (16MB Flash + 8MB PSRAM)
 - **W5500 Ethernet Module**
+- **Push Button** connected to GPIO 47 (with pull-up resistor or use internal pull-up)
 - Ethernet Cable
 - USB-C Cable for power/programming
 
@@ -32,6 +35,15 @@ ESP32-S3 WROOM-1 N16R8 with WiFi and W5500 Ethernet module for flexible network 
 | SCK   | GPIO 12  |
 | CS    | GPIO 10  |
 | RST   | GPIO 9   |
+
+### AP Mode Button
+
+| Component | ESP32-S3 |
+|-----------|----------|
+| Push Button (one side) | GPIO 47 |
+| Push Button (other side) | GND |
+
+**Note:** Internal pull-up resistor is enabled in code. No external resistor needed.
 
 ## Arduino IDE Setup
 
@@ -56,17 +68,27 @@ Install via Library Manager (Sketch → Include Library → Manage Libraries):
 ### First Time Setup
 
 1. **Upload the sketch** to your ESP32-S3
-2. **Open Serial Monitor** (115200 baud) to see connection info
-3. **Connect to WiFi AP**:
+2. **On first boot** (no saved config), device starts in AP mode automatically
+3. **OR press and hold the button** on GPIO 47 for 3 seconds
+4. **Open Serial Monitor** (115200 baud) to see connection info
+5. **Connect to WiFi AP**:
    - SSID: `Sarayu-Gateway-Setup`
    - Password: `sarayu123`
-4. **Open Browser**: Navigate to `http://192.168.4.1`
-5. **Configure Network**:
+6. **Open Browser**: Navigate to `http://192.168.4.1`
+7. **Configure Network**:
    - Select mode (WiFi/Ethernet/Both)
    - Enter WiFi credentials (if using WiFi)
    - Configure Ethernet (DHCP or Static IP)
    - Set priority (if using Both)
-6. **Click "Save & Connect"**
+8. **Click "Save & Connect"**
+9. **Device will reboot** and connect automatically
+
+### Normal Operation (After Configuration)
+
+- **Power On**: Device automatically connects using saved credentials
+- **No AP Mode**: Device operates normally, AP mode is NOT started
+- **To Reconfigure**: Press and hold button on GPIO 47 for 3 seconds
+- **AP Mode Activated**: Configure new settings via web interface
 
 ### Network Modes
 
@@ -102,10 +124,16 @@ When mode is set to **"Both"**:
 
 ### Accessing Configuration Portal
 
-The AP mode is **always active**, so you can:
-1. Connect to `Sarayu-Gateway-Setup` WiFi anytime
-2. Navigate to `http://192.168.4.1`
-3. Change configuration or view current status
+**Method 1: First Boot (No Config)**
+- Device automatically starts AP mode if no saved configuration exists
+
+**Method 2: Button Press**
+1. Press and hold button on GPIO 47
+2. Keep holding for 3 seconds (LED feedback in serial monitor)
+3. Release button
+4. Connect to `Sarayu-Gateway-Setup` WiFi
+5. Navigate to `http://192.168.4.1`
+6. Change configuration or view current status
 
 ## API Endpoints
 

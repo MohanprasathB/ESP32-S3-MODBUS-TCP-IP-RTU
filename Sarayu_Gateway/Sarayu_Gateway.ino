@@ -24,10 +24,13 @@
 #define SPI_MISO    13
 #define SPI_SCK     12
 
+// Button for AP mode
+#define AP_BUTTON_PIN 47
+#define BUTTON_HOLD_TIME 3000  // 3 seconds
+
 // AP Configuration
 #define AP_SSID     "Sarayu-Gateway-Setup"
 #define AP_PASSWORD "sarayu123"
-#define AP_TIMEOUT  300000  // 5 minutes in AP mode before retry
 
 // Network timeouts
 #define NETWORK_TIMEOUT 20000  // 20 seconds
@@ -59,9 +62,11 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 
 bool wifiConnected = false;
 bool ethernetConnected = false;
+bool apModeActive = false;
 
 // Forward declarations
 void startAPMode();
+bool checkAPButton();
 void loadConfiguration();
 void saveConfiguration();
 bool connectWiFi();
@@ -80,28 +85,70 @@ void setup() {
   Serial.println("║    Sarayu Gateway - Network Setup     ║");
   Serial.println("╚════════════════════════════════════════╝\n");
 
+  // Initialize AP button
+  pinMode(AP_BUTTON_PIN, INPUT_PULLUP);
+
   // Initialize preferences
   prefs.begin("network", false);
   
   // Load saved configuration
   loadConfiguration();
   
-  // Always start AP mode first for configuration
-  startAPMode();
+  // Check if AP button is pressed for 3 seconds
+  if (checkAPButton()) {
+    Serial.println("🔘 AP Button pressed - Starting AP mode...\n");
+    startAPMode();
+    apModeActive = true;
+  } else {
+    // Try to connect with saved credentials
+    Serial.println("🚀 Attempting auto-connect with saved credentials...\n");
+    applyNetworkConfiguration();
+    
+    // If both connections failed and no config exists, start AP mode
+    if (!wifiConnected && !ethernetConnected && currentConfig.mode.length() == 0) {
+      Serial.println("⚠ No saved configuration found - Starting AP mode...\n");
+      startAPMode();
+      apModeActive = true;
+    }
+  }
   
-  // Setup web server routes
-  server.on("/", HTTP_GET, handleRoot);
-  server.on("/save", HTTP_POST, handleSave);
-  server.on("/cancel", HTTP_POST, handleCancel);
-  server.on("/status", HTTP_GET, handleStatus);
-  
-  server.begin();
-  Serial.println("✓ Web server started");
-  Serial.println("═══════════════════════════════════════════");
+  // Setup web server routes (only if AP mode active)
+  if (apModeActive) {
+    server.on("/", HTTP_GET, handleRoot);
+    server.on("/save", HTTP_POST, handleSave);
+    server.on("/cancel", HTTP_POST, handleCancel);
+    server.on("/status", HTTP_GET, handleStatus);
+    
+    server.begin();
+    Serial.println("✓ Web server started");
+    Serial.println("═══════════════════════════════════════════");
+  }
 }
 
 void loop() {
-  server.handleClient();
+  // Handle web server only if AP mode is active
+  if (apModeActive) {
+    server.handleClient();
+  }
+  
+  // Check AP button during runtime
+  static unsigned long lastButtonCheck = 0;
+  if (millis() - lastButtonCheck > 1000) {
+    lastButtonCheck = millis();
+    if (checkAPButton() && !apModeActive) {
+      Serial.println("\n🔘 AP Button pressed - Switching to AP mode...");
+      startAPMode();
+      apModeActive = true;
+      
+      // Start web server
+      server.on("/", HTTP_GET, handleRoot);
+      server.on("/save", HTTP_POST, handleSave);
+      server.on("/cancel", HTTP_POST, handleCancel);
+      server.on("/status", HTTP_GET, handleStatus);
+      server.begin();
+      Serial.println("✓ Web server started");
+    }
+  }
   
   // Monitor connection status
   static unsigned long lastCheck = 0;
@@ -118,6 +165,29 @@ void loop() {
       ethernetConnected = false;
     }
   }
+}
+
+bool checkAPButton() {
+  // Check if button is pressed (LOW when pressed due to INPUT_PULLUP)
+  if (digitalRead(AP_BUTTON_PIN) == LOW) {
+    Serial.println("🔘 Button pressed, checking hold time...");
+    unsigned long pressStart = millis();
+    
+    // Wait and check if button is held for 3 seconds
+    while (digitalRead(AP_BUTTON_PIN) == LOW) {
+      if (millis() - pressStart >= BUTTON_HOLD_TIME) {
+        Serial.println("✓ Button held for 3 seconds!");
+        // Wait for button release
+        while (digitalRead(AP_BUTTON_PIN) == LOW) {
+          delay(10);
+        }
+        return true;
+      }
+      delay(10);
+    }
+    Serial.println("✗ Button released too early");
+  }
+  return false;
 }
 
 void startAPMode() {

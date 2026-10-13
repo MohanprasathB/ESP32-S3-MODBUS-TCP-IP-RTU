@@ -1,4 +1,5 @@
 // Web Server Handlers
+// HTML stored in Flash memory (PROGMEM) to save RAM
 
 const char HTML_PAGE[] PROGMEM = R"rawliteral(<!doctype html>
 <html lang="en">
@@ -256,8 +257,9 @@ updateMode();updateSecurity();updateIPMode();loadStatus();
 </html>
 )rawliteral";
 
+// Send HTML from Flash memory
 void handleRoot() {
-  server.send(200, "text/html", HTML_PAGE);
+  server.send_P(200, "text/html", HTML_PAGE);
 }
 
 void handleSave() {
