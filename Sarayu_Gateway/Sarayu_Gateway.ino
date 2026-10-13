@@ -60,9 +60,6 @@ byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };
 bool wifiConnected = false;
 bool ethernetConnected = false;
 
-// Include web handlers
-#include "web_handlers.h"
-
 // Forward declarations
 void startAPMode();
 void loadConfiguration();
@@ -124,6 +121,13 @@ void startAPMode() {
   Serial.println("─────────────────────────────────────────");
   
   WiFi.mode(WIFI_AP);
+  
+  // Configure static IP for AP
+  IPAddress local_ip(192, 168, 4, 1);
+  IPAddress gateway(192, 168, 4, 1);
+  IPAddress subnet(255, 255, 255, 0);
+  
+  WiFi.softAPConfig(local_ip, gateway, subnet);
   WiFi.softAP(AP_SSID, AP_PASSWORD);
   
   IPAddress IP = WiFi.softAPIP();
@@ -315,3 +319,6 @@ void applyNetworkConfiguration() {
   Serial.println("  Ethernet: " + String(ethernetConnected ? "Connected" : "Disconnected"));
   Serial.println("═══════════════════════════════════════════\n");
 }
+
+// Include web handlers after all function definitions
+#include "web_handlers.h"
