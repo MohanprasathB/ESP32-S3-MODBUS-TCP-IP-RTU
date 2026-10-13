@@ -45,7 +45,7 @@ body{
 .layout{
   position:relative;z-index:1;
   display:flex;
-  align-items:center;
+  align-items:flex-start;
   justify-content:center;
   gap:1.5rem;
   width:100%;
@@ -126,6 +126,8 @@ body{
 }
 .eye-btn:hover{color:var(--text)}
 
+.hint{font-size:.74rem;color:var(--sub);margin-top:.4rem;line-height:1.45}
+
 .radio-group{display:flex;gap:.6rem;margin-bottom:1rem}
 .radio-group label{
   flex:1;display:flex;align-items:center;justify-content:center;gap:.4rem;
@@ -141,6 +143,17 @@ body{
 .divider{display:flex;align-items:center;gap:.8rem;margin:1.4rem 0}
 .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
 .divider span{font-size:.72rem;color:var(--sub);white-space:nowrap;letter-spacing:.06em;text-transform:uppercase}
+
+.adv{margin-bottom:1rem;border:1px solid var(--border);border-radius:8px;background:rgba(39,52,73,.45)}
+.adv summary{
+  cursor:pointer;padding:.65rem .9rem;font-size:.8rem;font-weight:600;color:var(--sub);
+  list-style:none;display:flex;justify-content:space-between;align-items:center;
+}
+.adv summary::-webkit-details-marker{display:none}
+.adv summary::after{content:'+';font-size:1rem;line-height:1}
+.adv[open] summary::after{content:'\2212'}
+.adv summary:hover{color:var(--text)}
+.adv-body{padding:.2rem .9rem .5rem}
 
 .buttons{display:flex;flex-direction:column;gap:.6rem;margin-top:.4rem}
 .btn{
@@ -188,6 +201,8 @@ body{
 .refresh-btn:hover{border-color:var(--accent);color:var(--accent)}
 .status-card{background:var(--surface2);border:1px solid var(--border);
   border-radius:8px;padding:.7rem .9rem}
+.status-card + .status-card{margin-top:.7rem}
+.status-sub{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sub);margin-bottom:.3rem}
 .srow{display:flex;justify-content:space-between;gap:1rem;font-size:.82rem;padding:.25rem 0}
 .srow span:first-child{color:var(--sub)}
 .srow span:last-child{font-weight:600;word-break:break-all;text-align:right}
@@ -211,6 +226,10 @@ body{
     </div>
     <div class="status-card">
       <div id="statusCurrent" class="status-empty">Loading&#8230;</div>
+    </div>
+    <div class="status-card" id="liveCard" style="display:none">
+      <div class="status-sub">LTE live status</div>
+      <div id="statusLive"></div>
     </div>
   </div>
 
@@ -238,7 +257,11 @@ body{
           <select id="mode" onchange="updateMode()">
             <option value="wifi">Wi-Fi</option>
             <option value="ethernet">Ethernet</option>
+            <option value="lte">LTE (SIM)</option>
             <option value="both">Wi-Fi + Ethernet</option>
+            <option value="wifi_lte">Wi-Fi + LTE</option>
+            <option value="ethernet_lte">Ethernet + LTE</option>
+            <option value="all">Wi-Fi + Ethernet + LTE</option>
           </select>
         </div>
       </div>
@@ -309,16 +332,88 @@ body{
         </div>
       </div>
 
+      <div id="lteSection" class="section">
+        <div class="divider"><span>LTE / SIM</span></div>
+
+        <div class="field">
+          <label>APN</label>
+          <div class="input-wrap">
+            <input type="text" id="apn" placeholder="e.g. internet" autocomplete="off" autocapitalize="off">
+          </div>
+          <div class="hint">Leave blank to use the modem or operator default, if available.</div>
+        </div>
+
+        <details class="adv">
+          <summary>Advanced settings</summary>
+          <div class="adv-body">
+            <div class="field">
+              <label>APN username (optional)</label>
+              <div class="input-wrap"><input type="text" id="apnUser" autocomplete="off" autocapitalize="off"></div>
+            </div>
+
+            <div class="field">
+              <label>APN password (optional)</label>
+              <div class="input-wrap">
+                <input type="password" id="apnPass" autocomplete="off">
+                <button type="button" class="eye-btn" onclick="toggleEye('apnPass','apnEye')" title="Show/hide">
+                  <svg id="apnEye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Authentication</label>
+              <div class="input-wrap">
+                <select id="apnAuth">
+                  <option value="auto">Automatic</option>
+                  <option value="none">None</option>
+                  <option value="pap">PAP</option>
+                  <option value="chap">CHAP</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>SIM PIN (only if enabled)</label>
+              <div class="input-wrap">
+                <input type="password" id="simPin" inputmode="numeric" maxlength="8" autocomplete="off">
+                <button type="button" class="eye-btn" onclick="toggleEye('simPin','pinEye')" title="Show/hide">
+                  <svg id="pinEye" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>Network preference</label>
+              <div class="input-wrap">
+                <select id="netPref">
+                  <option value="auto">Automatic (recommended)</option>
+                  <option value="lte_only">4G / LTE only</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label>IP assignment</label>
+              <div class="input-wrap">
+                <select id="lteIpMode" disabled>
+                  <option value="dynamic">Dynamic IP (automatic)</option>
+                </select>
+              </div>
+              <div class="hint">The mobile network assigns the IP address. A static or private IP depends on your operator and SIM plan.</div>
+            </div>
+          </div>
+        </details>
+      </div>
+
       <div id="prioritySection" class="section">
         <div class="divider"><span>Network priority</span></div>
         <div class="field">
-          <label>Which connection should this gateway prefer?</label>
+          <label id="priorityLabel">Which connection should this gateway prefer?</label>
           <div class="input-wrap">
-            <select id="priority">
-              <option value="wifi_first">Wi-Fi &#8594; Ethernet</option>
-              <option value="ethernet_first">Ethernet &#8594; Wi-Fi</option>
-            </select>
+            <select id="priority"></select>
           </div>
+          <div class="hint">The first connection is preferred. If it does not connect within 20 seconds, the gateway falls back to the next one.</div>
         </div>
       </div>
 
@@ -338,7 +433,7 @@ body{
 
   </div>
 
-  <div class="card side side-right">1
+  <div class="card side side-right">
     <div class="status-head">
       <div class="side-title">Previous</div>
     </div>
@@ -351,6 +446,50 @@ body{
 
 <script>
 function $(id){return document.getElementById(id)}
+
+var MODE_LABELS={
+  wifi:'Wi-Fi', ethernet:'Ethernet', lte:'LTE',
+  both:'Wi-Fi + Ethernet', wifi_lte:'Wi-Fi + LTE',
+  ethernet_lte:'Ethernet + LTE', all:'Wi-Fi + Ethernet + LTE'
+};
+
+var PRIORITY_OPTIONS={
+  both:[
+    ['wifi_first','Wi-Fi \u2192 Ethernet'],
+    ['ethernet_first','Ethernet \u2192 Wi-Fi']
+  ],
+  wifi_lte:[
+    ['wifi_first','Wi-Fi \u2192 LTE'],
+    ['lte_first','LTE \u2192 Wi-Fi']
+  ],
+  ethernet_lte:[
+    ['ethernet_first','Ethernet \u2192 LTE'],
+    ['lte_first','LTE \u2192 Ethernet']
+  ],
+  all:[
+    ['wifi_ethernet_lte','Wi-Fi \u2192 Ethernet \u2192 LTE'],
+    ['wifi_lte_ethernet','Wi-Fi \u2192 LTE \u2192 Ethernet'],
+    ['ethernet_wifi_lte','Ethernet \u2192 Wi-Fi \u2192 LTE'],
+    ['ethernet_lte_wifi','Ethernet \u2192 LTE \u2192 Wi-Fi'],
+    ['lte_wifi_ethernet','LTE \u2192 Wi-Fi \u2192 Ethernet'],
+    ['lte_ethernet_wifi','LTE \u2192 Ethernet \u2192 Wi-Fi']
+  ]
+};
+
+function priorityLabel(mode,val){
+  var list=PRIORITY_OPTIONS[mode]||[];
+  for(var i=0;i<list.length;i++){ if(list[i][0]===val) return list[i][1]; }
+  return val;
+}
+
+function parts(m){
+  return {
+    wifi:['wifi','both','wifi_lte','all'].indexOf(m)>-1,
+    eth:['ethernet','both','ethernet_lte','all'].indexOf(m)>-1,
+    lte:['lte','wifi_lte','ethernet_lte','all'].indexOf(m)>-1,
+    multi:!!PRIORITY_OPTIONS[m]
+  };
+}
 
 function toast(msg,type,dur){
   var t=$('toast');
@@ -379,11 +518,30 @@ function setLoading(btn,spin,text,label,state){
   if(!state&&label)$(text).innerHTML=label;
 }
 
+function fillPriority(mode){
+  var sel=$("priority");
+  var prev=sel.value;
+  var list=PRIORITY_OPTIONS[mode]||[];
+  sel.innerHTML='';
+  list.forEach(function(o){
+    var op=document.createElement('option');
+    op.value=o[0]; op.textContent=o[1];
+    sel.appendChild(op);
+  });
+  for(var i=0;i<list.length;i++){ if(list[i][0]===prev){ sel.value=prev; break; } }
+  $("priorityLabel").textContent = (mode==='all')
+    ? 'Connection order (first is preferred, the rest are fallbacks)'
+    : 'Which connection should this gateway prefer?';
+}
+
 function updateMode() {
     const mode = $("mode").value;
-    $("wifiSection").style.display = (mode === "wifi" || mode === "both") ? "block" : "none";
-    $("ethernetSection").style.display = (mode === "ethernet" || mode === "both") ? "block" : "none";
-    $("prioritySection").style.display = mode === "both" ? "block" : "none";
+    const p = parts(mode);
+    $("wifiSection").style.display = p.wifi ? "block" : "none";
+    $("ethernetSection").style.display = p.eth ? "block" : "none";
+    $("lteSection").style.display = p.lte ? "block" : "none";
+    $("prioritySection").style.display = p.multi ? "block" : "none";
+    if (p.multi) fillPriority(mode);
 }
 
 function updateSecurity() {
@@ -398,6 +556,7 @@ function updateIPMode() {
 
 function saveConfiguration() {
     const mode = $("mode").value;
+    const p = parts(mode);
     const ssid = $("ssid").value.trim();
     const security = document.querySelector('input[name="security"]:checked').value;
     const password = $("password").value;
@@ -406,9 +565,15 @@ function saveConfiguration() {
     const netmask = $("netmask").value.trim();
     const gateway = $("gateway").value.trim();
     const dns = $("dns").value.trim();
-    const priority = $("priority").value;
+    const apn = $("apn").value.trim();
+    const apnUser = $("apnUser").value.trim();
+    const apnPass = $("apnPass").value;
+    const apnAuth = $("apnAuth").value;
+    const simPin = $("simPin").value.trim();
+    const netPref = $("netPref").value;
+    const priority = p.multi ? $("priority").value : "";
 
-    if (mode === "wifi" || mode === "both") {
+    if (p.wifi) {
         if (!ssid) { toast("&#x26A0; Please enter Wi-Fi SSID","error"); return; }
         if (security === "closed" && password.length < 8) {
             toast("&#x26A0; Wi-Fi password must contain at least 8 characters","error");
@@ -416,9 +581,20 @@ function saveConfiguration() {
         }
     }
 
-    if ((mode === "ethernet" || mode === "both") && ipmode === "static") {
+    if (p.eth && ipmode === "static") {
         if (!ip || !netmask || !gateway || !dns) {
             toast("&#x26A0; Please fill all static Ethernet fields","error");
+            return;
+        }
+    }
+
+    if (p.lte) {
+        if ((apnAuth === "pap" || apnAuth === "chap") && !apnUser) {
+            toast("&#x26A0; APN username is required for PAP / CHAP","error");
+            return;
+        }
+        if (simPin && !/^\d{4,8}$/.test(simPin)) {
+            toast("&#x26A0; SIM PIN must be 4 to 8 digits","error");
             return;
         }
     }
@@ -428,11 +604,15 @@ function saveConfiguration() {
         priority: priority,
         timeout: 20,
         wifi: { ssid: ssid, security: security, password: password },
-        ethernet: { ip_mode: ipmode, ip: ip, netmask: netmask, gateway: gateway, dns: dns }
+        ethernet: { ip_mode: ipmode, ip: ip, netmask: netmask, gateway: gateway, dns: dns },
+        lte: {
+            apn: apn, username: apnUser, password: apnPass, auth: apnAuth,
+            pin: simPin, network_pref: netPref, ip_mode: "dynamic", timeout: 20
+        }
     };
 
     setLoading('saveBtn','saveSpin','saveBtnText',null,true);
-    toast("Applying network configuration&#8230;","info",4000);
+    toast("Saving and exiting AP mode&#8230;","info",4000);
 
     fetch("/save", {
         method: "POST",
@@ -443,8 +623,7 @@ function saveConfiguration() {
     .then(data => {
         setLoading('saveBtn','saveSpin','saveBtnText','Save & Connect',false);
         if (data.success) {
-            toast("&#x2705; Configuration saved &#8212; applying network settings&#8230;","success",5000);
-            setTimeout(loadStatus, 8000);
+            toast("&#x2705; Configuration saved - connecting with new credentials&#8230;","success",5000);
         } else {
             toast("&#x274C; " + data.message,"error",5000);
         }
@@ -452,7 +631,7 @@ function saveConfiguration() {
     .catch(error => {
         console.error(error);
         setLoading('saveBtn','saveSpin','saveBtnText','Save & Connect',false);
-        toast("Network change started &#8212; connection may temporarily disconnect.","info",5000);
+        toast("Exiting AP mode - connecting with new network settings","info",5000);
     });
 }
 
@@ -480,6 +659,18 @@ function cancelConfiguration() {
     });
 }
 
+function addRows(box, rows) {
+    rows.forEach(function (r) {
+        const d = document.createElement('div');
+        d.className = 'srow';
+        const a = document.createElement('span'); a.textContent = r[0];
+        const b = document.createElement('span');
+        b.textContent = (r[1] === undefined || r[1] === null || r[1] === '') ? '-' : r[1];
+        d.appendChild(a); d.appendChild(b);
+        box.appendChild(d);
+    });
+}
+
 function renderStatus(id, cfg) {
     const box = $(id);
     box.innerHTML = '';
@@ -487,32 +678,47 @@ function renderStatus(id, cfg) {
     if (cfg.error) { box.className = 'status-empty'; box.textContent = 'Error: ' + cfg.error; return; }
     box.className = '';
 
-    const rows = [['Mode', cfg.mode]];
-    const wifi = cfg.wifi || {}, eth = cfg.ethernet || {};
+    const p = parts(cfg.mode);
+    const rows = [['Mode', MODE_LABELS[cfg.mode] || cfg.mode]];
+    const wifi = cfg.wifi || {}, eth = cfg.ethernet || {}, lte = cfg.lte || {};
 
-    if (cfg.mode === 'both') rows.push(['Priority', cfg.priority]);
-    if (cfg.mode === 'wifi' || cfg.mode === 'both') {
+    if (p.multi) rows.push(['Priority', priorityLabel(cfg.mode, cfg.priority)]);
+    if (p.wifi) {
         rows.push(['Wi-Fi SSID', wifi.ssid || '-']);
         rows.push(['Security', wifi.security]);
         if (wifi.security === 'closed') rows.push(['Password', wifi.password || '-']);
     }
-    if (cfg.mode === 'ethernet' || cfg.mode === 'both') {
+    if (p.eth) {
         rows.push(['IP mode', eth.ip_mode]);
         if (eth.ip_mode === 'static') {
             rows.push(['IP', eth.ip], ['Netmask', eth.netmask],
                       ['Gateway', eth.gateway], ['DNS', eth.dns]);
         }
     }
+    if (p.lte) {
+        rows.push(['APN', lte.apn || 'Auto']);
+        if (lte.username) rows.push(['APN user', lte.username]);
+        if (lte.password) rows.push(['APN password', '\u2022\u2022\u2022\u2022\u2022\u2022']);
+        rows.push(['APN auth', lte.auth || 'auto']);
+        if (lte.pin) rows.push(['SIM PIN', '\u2022\u2022\u2022\u2022']);
+        rows.push(['Network pref', lte.network_pref === 'lte_only' ? '4G / LTE only' : 'Automatic']);
+    }
 
-    rows.forEach(function (r) {
-        const d = document.createElement('div');
-        d.className = 'srow';
-        const a = document.createElement('span'); a.textContent = r[0];
-        const b = document.createElement('span');
-        b.textContent = (r[1] === undefined || r[1] === '') ? '-' : r[1];
-        d.appendChild(a); d.appendChild(b);
-        box.appendChild(d);
-    });
+    addRows(box, rows);
+}
+
+function renderLive(live) {
+    const card = $('liveCard'), box = $('statusLive');
+    box.innerHTML = '';
+    if (!live) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    addRows(box, [
+        ['SIM', live.sim],
+        ['Operator', live.operator],
+        ['Signal', live.signal],
+        ['Registration', live.registration],
+        ['Connection', live.connection]
+    ]);
 }
 
 function loadStatus() {
@@ -521,6 +727,7 @@ function loadStatus() {
     .then(d => {
         renderStatus('statusCurrent', d.current);
         renderStatus('statusPrevious', d.previous);
+        renderLive(d.lte_live);
     })
     .catch(() => {
         $('statusCurrent').textContent = 'Could not load status';
@@ -532,7 +739,6 @@ updateMode();
 updateSecurity();
 updateIPMode();
 loadStatus();
-updateMode();updateSecurity();updateIPMode();loadStatus();
 </script>
 </body>
 </html>
@@ -573,11 +779,16 @@ void handleSave() {
     // Save to NVS
     saveConfiguration();
     
-    server.send(200, "application/json", "{\"success\":true,\"message\":\"Configuration saved\"}");
+    Serial.println("\n📌 Save & Connect button pressed - saving new configuration");
     
-    // Apply configuration after response sent
-    delay(500);
-    applyNetworkConfiguration();
+    // Send response first
+    server.send(200, "application/json", "{\"success\":true,\"message\":\"Configuration saved, connecting with new credentials\"}");
+    
+    // Small delay to ensure response is sent
+    delay(100);
+    
+    // Exit AP mode and connect with NEW credentials
+    exitAPMode();
   } else {
     server.send(400, "application/json", "{\"success\":false,\"message\":\"No data received\"}");
   }
