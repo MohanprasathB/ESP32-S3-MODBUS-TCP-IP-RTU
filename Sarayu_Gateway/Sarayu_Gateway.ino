@@ -67,6 +67,10 @@ void saveConfiguration();
 bool connectWiFi();
 bool connectEthernet();
 void applyNetworkConfiguration();
+void handleRoot();
+void handleSave();
+void handleCancel();
+void handleStatus();
 
 void setup() {
   Serial.begin(115200);
