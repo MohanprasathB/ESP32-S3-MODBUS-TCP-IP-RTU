@@ -72,6 +72,7 @@ void saveConfiguration();
 bool connectWiFi();
 bool connectEthernet();
 void applyNetworkConfiguration();
+void exitAPMode();
 void handleRoot();
 void handleSave();
 void handleCancel();
@@ -99,21 +100,8 @@ void setup() {
     Serial.println("🔘 AP Button pressed - Starting AP mode...\n");
     startAPMode();
     apModeActive = true;
-  } else {
-    // Try to connect with saved credentials
-    Serial.println("🚀 Attempting auto-connect with saved credentials...\n");
-    applyNetworkConfiguration();
     
-    // If both connections failed and no config exists, start AP mode
-    if (!wifiConnected && !ethernetConnected && currentConfig.mode.length() == 0) {
-      Serial.println("⚠ No saved configuration found - Starting AP mode...\n");
-      startAPMode();
-      apModeActive = true;
-    }
-  }
-  
-  // Setup web server routes (only if AP mode active)
-  if (apModeActive) {
+    // Setup web server routes
     server.on("/", HTTP_GET, handleRoot);
     server.on("/save", HTTP_POST, handleSave);
     server.on("/cancel", HTTP_POST, handleCancel);
@@ -122,6 +110,10 @@ void setup() {
     server.begin();
     Serial.println("✓ Web server started");
     Serial.println("═══════════════════════════════════════════");
+  } else {
+    // Normal boot - try to connect with saved credentials
+    Serial.println("🚀 Normal boot - Attempting auto-connect...\n");
+    applyNetworkConfiguration();
   }
 }
 
@@ -392,6 +384,25 @@ void applyNetworkConfiguration() {
   Serial.println("  WiFi    : " + String(wifiConnected ? "Connected" : "Disconnected"));
   Serial.println("  Ethernet: " + String(ethernetConnected ? "Connected" : "Disconnected"));
   Serial.println("═══════════════════════════════════════════\n");
+}
+
+void exitAPMode() {
+  Serial.println("\n🔄 Exiting AP mode, returning to STA mode...");
+  
+  // Stop web server
+  server.stop();
+  
+  // Stop AP mode
+  WiFi.softAPdisconnect(true);
+  
+  // Set flag
+  apModeActive = false;
+  
+  Serial.println("✓ AP mode stopped");
+  Serial.println("🔌 Reconnecting to saved network...\n");
+  
+  // Reconnect with saved credentials
+  applyNetworkConfiguration();
 }
 
 // Include web handlers after all function definitions
